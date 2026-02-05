@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Database Benchmark Results</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <style>
+    body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px 0;
+        }
+        .main-layout {
+            display: flex;
+            gap: 20px;
+        }
+        .sidebar {
+            width: 220px;
+            flex-shrink: 0;
+        }
+        .content-area {
+            flex: 1;
+            min-width: 0;
+        }
+        .container {
+            max-width: 1600px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+        }
+        .controls h4 {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            color: #333;
+        }
+        .db-toggle {
+      display: flex;
+      align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        .db-toggle:hover {
+            background-color: #f5f5f5;
+        }
+        .db-toggle-btn {
+            width: 40px;
+            height: 24px;
+            position: relative;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.3s;
+            border: 2px solid #ddd;
+            margin-right: 10px;
+        }
+        .db-toggle-btn.active {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .db-toggle-btn.inactive {
+            background-color: #ccc;
+            border-color: #ccc;
+        }
+        .db-toggle-btn::after {
+      content: '';
+      position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            top: 1px;
+            left: 1px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .db-toggle-btn.active::after {
+            left: 19px;
+        }
+        .db-toggle-label {
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            user-select: none;
+        }
+        .toggle-all-btn {
+            width: 100%;
+            margin-top: 15px;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            background-color: #667eea;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .toggle-all-btn:hover {
+            background-color: #5568d3;
+        }
+        #chartsContainer {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            max-width: 100%;
+        }
+        @media (min-width: 1400px) {
+            #chartsContainer {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        .chart-wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s;
+        }
+        .chart-wrapper:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        .chart-wrapper::before {
+            content: '🔍 Click to expand';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.75rem;
+            color: #999;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .chart-wrapper:hover::before {
+            opacity: 1;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+      width: 100%;
+      height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            overflow: auto;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 1200px;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        .close-modal {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #999;
+            cursor: pointer;
+            border: none;
+            background: none;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-modal:hover {
+            color: #333;
+        }
+        .modal-description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+        .modal-chart-wrapper {
+            position: relative;
+            height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+            flex: 1;
+        }
+        .chart-grip {
+            color: #999;
+            font-size: 1.2rem;
+            cursor: move;
+            margin-left: 10px;
+        }
+        .chart-description {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.4;
+            font-style: italic;
+        }
+        .chart-canvas-wrapper {
+            position: relative;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-width: 1200px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+            }
+            .controls {
+      position: relative;
+                top: 0;
+            }
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+      font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        .loading, .error-message {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .sortable-ghost {
+            opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Vector Database Benchmark Results</h1>
+            <p class="mb-0">Interactive performance comparison dashboard</p>
+        </div>
+
+        <div id="loading" class="loading">Loading benchmark data...</div>
+        <div id="error" class="error-message" style="display: none;"></div>
+
+        <div id="content" style="display: none;">
+            <div class="main-layout">
+                <div class="sidebar">
+                    <div class="controls">
+                        <h4>Toggle Databases</h4>
+                        <div id="dbToggles"></div>
+                        <button id="toggleAll" class="toggle-all-btn">Toggle All</button>
+                    </div>
+                </div>
+                
+                <div class="content-area">
+                    <div class="stats-grid" id="statsGrid"></div>
+                    <div id="chartsContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal for expanded chart view -->
+        <div id="chartModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="modalTitle"></h3>
+                    <button class="close-modal" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-description" id="modalDescription"></div>
+                <div class="modal-chart-wrapper">
+                    <canvas id="modal_chart_canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dbColors = {
+            'faiss': '#2ca02c',
+            'milvus': '#1f77b4',
+            'pgvector': '#ff7f0e',
+            'qdrant': '#d62728',
+            'mongodb_atlas': '#00ED64'
+        };
+
+        let allData = [];
+        let charts = {};
+        let enabledDBs = new Set();
+
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                const row = {};
+                headers.forEach((header, idx) => {
+                    const val = values[idx];
+                    row[header] = (val && !isNaN(val) && val !== '') ? parseFloat(val) : val;
+                });
+                data.push(row);
+            }
+            return data;
+        }
+
+        function round1(value) {
+            return (typeof value === 'number' && !Number.isNaN(value)) ? Number(value.toFixed(1)) : value;
+        }
+
+        function groupByDatabase(data) {
+            const grouped = {};
+            data.forEach(row => {
+                if (!grouped[row.db]) grouped[row.db] = [];
+                grouped[row.db].push(row);
+            });
+            Object.keys(grouped).forEach(db => {
+                grouped[db].sort((a, b) => a.n_dataset - b.n_dataset);
+            });
+            return grouped;
+        }
+
+        function createLineChart(wrapperId, title, data, yLabel, getValue, isModal = false) {
+            const canvasId = wrapperId + '_canvas';
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const grouped = groupByDatabase(data);
+            
+            const datasets = Object.keys(grouped)
+                .filter(db => enabledDBs.has(db))
+                .map(db => ({
+                    label: db.toUpperCase(),
+                    data: grouped[db].map(row => ({x: row.n_dataset, y: getValue(row)})),
+                    borderColor: dbColors[db] || '#808080',
+                    backgroundColor: dbColors[db] || '#808080',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: isModal ? 8 : 6,
+                    pointHoverRadius: isModal ? 10 : 8,
+                    hidden: !enabledDBs.has(db)
+                }));
+
+            if (charts[wrapperId]) charts[wrapperId].destroy();
+
+            charts[wrapperId] = new Chart(ctx, {
+                type: 'line',
+                data: {datasets},
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            onClick: function(e, legendItem) {
+                                const index = legendItem.datasetIndex;
+                                const chart = this.chart;
+                                const meta = chart.getDatasetMeta(index);
+                                meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+                                chart.update();
+                            },
+                            onHover: function(e, legendItem) {
+                                e.native.target.style.cursor = 'pointer';
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || 'Value';
+                                    const value = context.parsed.y ?? context.parsed;
+                                    const rounded = (typeof value === 'number') ? value.toFixed(1) : value;
+                                    return `${label}: ${rounded} ${yLabel}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {display: true, text: 'Dataset Size (N)', font: {size: 14, weight: 'bold'}},
+                            ticks: {callback: (v) => v.toLocaleString()}
+                        },
+                        y: {
+                            title: {display: true, text: yLabel, font: {size: 14, weight: 'bold'}},
+                            beginAtZero: true,
+                            grid: {color: 'rgba(0,0,0,0.1)'}
+                        }
+                    }
+                }
+            });
+        }
+
+        function createBarChart(wrapperId, title, data, yLabel, getValue, isGrouped = false, isModal = false) {
+            const canvasId = wrapperId + '_canvas';
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const sizes = [...new Set(data.map(r => r.n_dataset).filter(v => typeof v === 'number' && !Number.isNaN(v)))]
+                .sort((a, b) => a - b);
+            const dbs = [...new Set(data.map(r => r.db))].sort().filter(db => enabledDBs.has(db));
+            
+            let datasets, labels;
+            
+            if (isGrouped) {
+                const maxSize = sizes.length ? Math.max(...sizes) : null;
+                const chartData = maxSize !== null ? data.filter(r => r.n_dataset === maxSize) : data;
+                labels = dbs.map(db => db.toUpperCase());
+                
+                if (title.includes('Latency Distribution')) {
+                    datasets = [
+                        {label: 'p50', data: dbs.map(db => round1(chartData.find(r => r.db === db)?.p50_ms || 0)), backgroundColor: '#4CAF50', borderColor: '#4CAF50', borderWidth: 2},
+                        {label: 'p95', data: dbs.map(db => round1(chartData.find(r => r.db === db)?.p95_ms || 0)), backgroundColor: '#FF9800', borderColor: '#FF9800', borderWidth: 2},
+                        {label: 'p99', data: dbs.map(db => round1(chartData.find(r => r.db === db)?.p99_ms || 0)), backgroundColor: '#F44336', borderColor: '#F44336', borderWidth: 2}
+                    ];
+                } else {
+                    datasets = [
+                        {label: 'p50', data: dbs.map(db => round1(chartData.find(r => r.db === db)?.p50_ms || 0)), backgroundColor: '#4CAF50', borderColor: '#4CAF50', borderWidth: 2},
+                        {label: 'p95', data: dbs.map(db => round1(chartData.find(r => r.db === db)?.p95_ms || 0)), backgroundColor: '#FF9800', borderColor: '#FF9800', borderWidth: 2}
+                    ];
+                }
+            } else {
+                labels = dbs.map(db => db.toUpperCase());
+                if (sizes.length === 0) {
+                    datasets = [{
+                        label: 'Current',
+                        data: dbs.map(db => {
+                            const row = data.find(r => r.db === db);
+                            return row ? round1(getValue(row)) : 0;
+                        }),
+                        backgroundColor: dbs.map(db => dbColors[db] || '#808080')
+                    }];
+                } else {
+                    datasets = sizes.map(size => {
+                        const sizeData = data.filter(r => r.n_dataset === size);
+                        return {
+                            label: `N=${size.toLocaleString()}`,
+                            data: dbs.map(db => {
+                                const row = sizeData.find(r => r.db === db);
+                                return row ? round1(getValue(row)) : 0;
+                            }),
+                            backgroundColor: dbs.map(db => dbColors[db] || '#808080')
+                        };
+                    });
+                }
+            }
+
+            if (charts[wrapperId]) charts[wrapperId].destroy();
+
+            charts[wrapperId] = new Chart(ctx, {
+                type: 'bar',
+                data: {labels, datasets},
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: datasets.length > 1 || isGrouped,
+                            position: 'top',
+                            onClick: function(e, legendItem) {
+                                const index = legendItem.datasetIndex;
+                                const chart = this.chart;
+                                const meta = chart.getDatasetMeta(index);
+                                meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+                                chart.update();
+                            },
+                            onHover: function(e, legendItem) {
+                                e.native.target.style.cursor = 'pointer';
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || 'Value';
+                                    const value = context.parsed.y ?? context.parsed;
+                                    const rounded = (typeof value === 'number') ? value.toFixed(1) : value;
+                                    return `${label}: ${rounded} ${yLabel}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {display: true, text: yLabel, font: {size: 14, weight: 'bold'}},
+                            grid: {color: 'rgba(0,0,0,0.1)'},
+                            ticks: {callback: (v) => (typeof v === 'number' ? v.toFixed(1) : v)}
+                        },
+                        x: {title: {display: true, text: 'Database', font: {size: 14, weight: 'bold'}}}
+                    }
+                }
+            });
+        }
+
+        function createRadarChart(wrapperId, data, isModal = false) {
+            const canvasId = wrapperId + '_canvas';
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const maxSize = Math.max(...data.map(r => r.n_dataset));
+            const chartData = data.filter(r => r.n_dataset === maxSize);
+            const dbs = [...new Set(chartData.map(r => r.db))].sort().filter(db => enabledDBs.has(db));
+            
+            // Normalize values for radar chart (0-100 scale)
+            const metrics = ['p50_ms', 'p95_ms', 'qps', 'insert_ms'];
+            const normalized = {};
+            metrics.forEach(metric => {
+                const values = chartData.map(r => r[metric] || 0).filter(v => v > 0);
+                if (values.length > 0) {
+                    const max = Math.max(...values);
+                    const min = Math.min(...values);
+                    normalized[metric] = {max, min, range: max - min || 1};
+                }
+            });
+
+            const datasets = dbs.map(db => {
+                const row = chartData.find(r => r.db === db);
+                if (!row) return null;
+                
+                const values = [
+                    normalized.p50_ms ? 100 - ((row.p50_ms - normalized.p50_ms.min) / normalized.p50_ms.range * 100) : 0,
+                    normalized.p95_ms ? 100 - ((row.p95_ms - normalized.p95_ms.min) / normalized.p95_ms.range * 100) : 0,
+                    normalized.qps ? (row.qps - normalized.qps.min) / normalized.qps.range * 100 : 0,
+                    normalized.insert_ms ? 100 - ((row.insert_ms - normalized.insert_ms.min) / normalized.insert_ms.range * 100) : 0
+                ];
+                
+                return {
+                    label: db.toUpperCase(),
+                    data: values,
+                    borderColor: dbColors[db] || '#808080',
+                    backgroundColor: (dbColors[db] || '#808080') + '40',
+                    borderWidth: isModal ? 3 : 2
+                };
+            }).filter(d => d !== null);
+
+            if (charts[wrapperId]) charts[wrapperId].destroy();
+
+            charts[wrapperId] = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Latency p50', 'Latency p95', 'Throughput (QPS)', 'Insert Speed'],
+                    datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            onClick: function(e, legendItem) {
+                                const index = legendItem.datasetIndex;
+                                const chart = this.chart;
+                                const meta = chart.getDatasetMeta(index);
+                                meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+                                chart.update();
+                            },
+                            onHover: function(e, legendItem) {
+                                e.native.target.style.cursor = 'pointer';
+                            }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            pointLabels: {
+                                font: {
+                                    size: isModal ? 14 : 12
+                                }
+                            },
+                            ticks: {
+                                display: true,
+                                font: {
+                                    size: isModal ? 12 : 10
+                                }
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: isModal ? 20 : 10,
+                            bottom: isModal ? 20 : 10,
+                            left: isModal ? 20 : 10,
+                            right: isModal ? 20 : 10
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateAllCharts() {
+            Object.keys(charts).forEach(wrapperId => {
+                const wrapper = document.getElementById(wrapperId);
+                if (!wrapper) return;
+                
+                const title = wrapper.querySelector('.chart-title')?.textContent;
+                if (!title) return;
+                const isModal = wrapperId.includes('_modal');
+                
+                // Recreate chart based on type
+                if (title.includes('p50') && title.includes('Latency')) {
+                    createBarChart(wrapperId, title, allData, 'Latency (ms)', r => r.p50_ms, false, isModal);
+                } else if (title.includes('p95') && title.includes('Latency')) {
+                    createBarChart(wrapperId, title, allData, 'Latency (ms)', r => r.p95_ms, false, isModal);
+                } else if (title.includes('Average') || title.includes('Avg')) {
+                    createBarChart(wrapperId, title, allData, 'Latency (ms)', r => r.avg_ms, false, isModal);
+                } else if (title.includes('Insertion Time') || title.includes('Insert')) {
+                    createBarChart(wrapperId, title, allData, 'Time (ms)', r => r.insert_ms, false, isModal);
+                } else if (title.includes('Throughput') || title.includes('QPS')) {
+                    createBarChart(wrapperId, title, allData, 'Queries per Second', r => r.qps, false, isModal);
+                } else if (title.includes('Memory')) {
+                    createBarChart(wrapperId, title, allData, 'Memory (MB)', r => r.memory_mb, false, isModal);
+                } else if (title.includes('Recall')) {
+                    createBarChart(wrapperId, title, allData, 'Recall@K', r => r.recall_at_k, false, isModal);
+                }
+            });
+        }
+
+        function openChartModal(chartId, title, description) {
+            const modal = document.getElementById('chartModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalDesc = document.getElementById('modalDescription');
+            const modalCanvas = document.getElementById('modalChartCanvas');
+            
+            modalTitle.textContent = title;
+            modalDesc.textContent = description;
+            
+            // Clear existing modal chart
+            if (charts['modal_chart']) {
+                charts['modal_chart'].destroy();
+            }
+            
+            // Create chart in modal based on original chart type
+            const originalTitle = title;
+            const wrapperId = 'modal_chart';
+            
+            setTimeout(() => {
+                if (originalTitle.includes('p50') && originalTitle.includes('Latency')) {
+                    createBarChart(wrapperId, originalTitle, allData, 'Latency (ms)', r => r.p50_ms, false, true);
+                } else if (originalTitle.includes('p95') && originalTitle.includes('Latency')) {
+                    createBarChart(wrapperId, originalTitle, allData, 'Latency (ms)', r => r.p95_ms, false, true);
+                } else if (originalTitle.includes('Average') || originalTitle.includes('Avg')) {
+                    createBarChart(wrapperId, originalTitle, allData, 'Latency (ms)', r => r.avg_ms, false, true);
+                } else if (originalTitle.includes('Insertion Time') || originalTitle.includes('Insert')) {
+                    createBarChart(wrapperId, originalTitle, allData, 'Time (ms)', r => r.insert_ms, false, true);
+                } else if (originalTitle.includes('Throughput') || originalTitle.includes('QPS')) {
+                    createBarChart(wrapperId, originalTitle, allData, 'Queries per Second', r => r.qps, false, true);
+                } else if (originalTitle.includes('Memory')) {
+                    createBarChart(wrapperId, originalTitle, allData, 'Memory (MB)', r => r.memory_mb, false, true);
+                } else if (originalTitle.includes('Recall')) {
+                    createBarChart(wrapperId, originalTitle, allData, 'Recall@K', r => r.recall_at_k, false, true);
+                }
+            }, 100);
+            
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('chartModal').style.display = 'none';
+        }
+
+        const chartDescriptions = {
+            'p50 Latency': 'Median (typical) query time. Lower is better.',
+            'p95 Latency': 'Slow‑tail query time (95% of queries are faster). Lower is better.',
+            'Average Latency (Avg)': 'Mean query time across all queries. Lower is better.',
+            'Insertion Time (ms)': 'Total time to load all vectors into the database. Lower is better.',
+            'Query Throughput (QPS)': 'Queries per second handled during the run. Higher is better.',
+            'Search Accuracy (Recall@K)': 'How often the top‑K results match the ground truth. Closer to 1.0 is better.',
+            'Memory Usage (MB)': 'Approximate memory used by the database during the run. Lower is better.'
+        };
+
+        function createChartWrapper(id, title) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper';
+            wrapper.id = id;
+            wrapper.style.position = 'relative';
+            const description = chartDescriptions[title] || 'Performance metric visualization.';
+            wrapper.innerHTML = `
+                <div class="chart-header">
+                    <h4 class="chart-title">${title}</h4>
+                    <span class="chart-grip">⋮⋮</span>
+                </div>
+                <div class="chart-description">${description}</div>
+                <div class="chart-canvas-wrapper">
+                    <canvas id="${id}_canvas"></canvas>
+                </div>
+            `;
+            
+            // Add click handler to open modal
+            wrapper.addEventListener('click', function(e) {
+                // Don't open modal if clicking on drag handle
+                if (e.target.classList.contains('chart-grip')) return;
+                openChartModal(id, title, description);
+            });
+            
+            return wrapper;
+        }
+
+        async function loadData() {
+            const paths = ['benchmark_results.csv', '../results/benchmark_results.csv', '../../results/benchmark_results.csv'];
+            let csvText = null;
+            
+            for (const path of paths) {
+                try {
+                    const response = await fetch(path);
+                    if (response.ok) { csvText = await response.text(); break; }
+                } catch (err) {}
+            }
+            
+            if (!csvText) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').innerHTML = 'CSV file not found. Run the benchmark to generate results.';
+                return;
+            }
+
+            try {
+                allData = parseCSV(csvText);
+                if (allData.length === 0) throw new Error('CSV vazio');
+
+                const sizesSet = new Set(allData.map(r => r.n_dataset).filter(v => typeof v === 'number' && !Number.isNaN(v)));
+                const sizes = [...sizesSet];
+                const maxSize = sizes.length ? Math.max(...sizes) : null;
+
+                // Single-run view: if multiple sizes exist, show only the latest (max N).
+                if (sizes.length > 1 && maxSize !== null) {
+                    allData = allData.filter(r => r.n_dataset === maxSize);
+                }
+
+                const dbs = [...new Set(allData.map(r => r.db))].sort();
+                enabledDBs = new Set(dbs); // Enable all by default
+
+                // Create toggle controls
+                const togglesDiv = document.getElementById('dbToggles');
+                dbs.forEach(db => {
+                    const div = document.createElement('div');
+                    div.className = 'db-toggle';
+                    const toggleId = `toggle_${db}`;
+                    div.innerHTML = `
+                        <div class="db-toggle-btn active" id="btn_${toggleId}" data-db="${db}"></div>
+                        <label class="db-toggle-label" for="${toggleId}" style="color: ${dbColors[db] || '#000'}; font-weight: bold;">
+                            ${db.toUpperCase()}
+                        </label>
+                    `;
+                    const btn = div.querySelector('.db-toggle-btn');
+                    btn.addEventListener('click', function() {
+                        const isActive = this.classList.contains('active');
+                        if (isActive) {
+                            this.classList.remove('active');
+                            this.classList.add('inactive');
+                            enabledDBs.delete(db);
+                        } else {
+                            this.classList.remove('inactive');
+                            this.classList.add('active');
+                            enabledDBs.add(db);
+                        }
+                        updateAllCharts();
+                    });
+                    togglesDiv.appendChild(div);
+                });
+
+                document.getElementById('toggleAll').addEventListener('click', function() {
+                    const allChecked = dbs.every(db => enabledDBs.has(db));
+                    dbs.forEach(db => {
+                        const btn = document.getElementById(`btn_toggle_${db}`);
+                        if (!allChecked) {
+                            btn.classList.remove('inactive');
+                            btn.classList.add('active');
+                            enabledDBs.add(db);
+                        } else {
+                            btn.classList.remove('active');
+                            btn.classList.add('inactive');
+                            enabledDBs.delete(db);
+                        }
+                    });
+                    updateAllCharts();
+                });
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+                const currentSize = maxSize;
+                const fastest = allData.reduce((min, r) => r.p50_ms < min.p50_ms ? r : min, allData[0]);
+                const dbCount = dbs.length;
+
+                const sizeLabel = currentSize !== null ? currentSize.toLocaleString() : 'N/A';
+                document.getElementById('statsGrid').innerHTML = `
+                    <div class="stat-card"><div class="stat-value">${dbCount}</div><div class="stat-label">Databases</div></div>
+                    <div class="stat-card"><div class="stat-value">${sizeLabel}</div><div class="stat-label">Dataset Size</div></div>
+                    <div class="stat-card"><div class="stat-value">${fastest.db.toUpperCase()}</div><div class="stat-label">Fastest (p50)</div></div>
+                    <div class="stat-card"><div class="stat-value">${fastest.p50_ms.toFixed(1)}ms</div><div class="stat-label">Best Latency</div></div>
+                `;
+
+                // Create all charts
+                const container = document.getElementById('chartsContainer');
+                const chartConfigs = [
+                    {id: 'chart_p50', title: 'p50 Latency'},
+                    {id: 'chart_p95', title: 'p95 Latency'},
+                    {id: 'chart_avg', title: 'Average Latency (Avg)'},
+                    {id: 'chart_insert', title: 'Insertion Time (ms)'},
+                    {id: 'chart_throughput', title: 'Query Throughput (QPS)'},
+                    {id: 'chart_recall', title: 'Search Accuracy (Recall@K)'},
+                    {id: 'chart_memory', title: 'Memory Usage (MB)'}
+                ];
+
+                chartConfigs.forEach(config => {
+                    const wrapper = createChartWrapper(config.id, config.title);
+                    container.appendChild(wrapper);
+                });
+
+                // Initialize charts (single-run friendly bar charts)
+                createBarChart('chart_p50', 'p50 Latency', allData, 'Latency (ms)', r => r.p50_ms);
+                createBarChart('chart_p95', 'p95 Latency', allData, 'Latency (ms)', r => r.p95_ms);
+                createBarChart('chart_avg', 'Average Latency (Avg)', allData, 'Latency (ms)', r => r.avg_ms);
+                createBarChart('chart_insert', 'Insertion Time (ms)', allData, 'Time (ms)', r => r.insert_ms);
+                
+                if (allData[0].qps !== undefined) {
+                    createBarChart('chart_throughput', 'Query Throughput (QPS)', allData, 'Queries per Second', r => r.qps);
+                } else {
+                    document.getElementById('chart_throughput').style.display = 'none';
+                }
+                
+                if (allData[0].memory_mb !== undefined) {
+                    createBarChart('chart_memory', 'Memory Usage (MB)', allData, 'Memory (MB)', r => r.memory_mb);
+                } else {
+                    document.getElementById('chart_memory').style.display = 'none';
+                }
+                
+                if (allData[0].recall_at_k !== undefined) {
+                    createBarChart('chart_recall', 'Search Accuracy (Recall@K)', allData, 'Recall@K', r => r.recall_at_k);
+                } else {
+                    document.getElementById('chart_recall').style.display = 'none';
+                }
+
+                // Make charts sortable (only drag by grip handle)
+                new Sortable(container, {
+                    animation: 150,
+                    handle: '.chart-grip'
+                });
+
+                // Close modal when clicking outside
+                window.onclick = function(event) {
+                    const modal = document.getElementById('chartModal');
+                    if (event.target === modal) {
+                        closeModal();
+                    }
+                }
+
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').innerHTML = 'Error: ' + error.message;
+            }
+        }
+
+        loadData();
+    </script>
+</body>
+</html>

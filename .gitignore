@@ -1,0 +1,9 @@
+venv/
+.env
+data/
+node_modules/
+
+__pycache__/
+results/
+resultsold/
+
