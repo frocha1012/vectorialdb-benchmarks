@@ -220,6 +220,12 @@ Suite outputs:
 - `results/suite_*_<timestamp>.png`
 - `site/public/benchmark_results.csv`
 
+## Test environment
+
+- CPU: AMD Ryzen 7 9800X3D (8 cores / 16 threads)
+- GPU: AMD Radeon RX 9080 XT (16 GB VRAM)
+- RAM: 64 GB DDR5 6000Mhz
+
 ## View the dashboard
 
 From `site/`:
