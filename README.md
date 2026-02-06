@@ -231,6 +231,8 @@ From `site/`:
 
 Open the URL shown in the terminal.
 
+![Web Dashboard Screenshot](https://i.imgur.com/OCRO8aL.png)
+
 ## Notes on accuracy
 
 - FAISS uses exact search and acts as Recall@K ground truth.
