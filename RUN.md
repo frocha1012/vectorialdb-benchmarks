@@ -30,6 +30,12 @@ From the repo root:
 docker-compose up -d
 ```
 
+If you need to clean up orphan containers before rerunning:
+
+```powershell
+docker compose down --remove-orphans
+```
+
 This brings up pgvector (Postgres), Qdrant, and MongoDB (local container).
 
 To run Milvus:

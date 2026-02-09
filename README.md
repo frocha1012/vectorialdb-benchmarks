@@ -42,6 +42,12 @@ From the repo root:
 docker-compose up -d
 ```
 
+Clean up orphan containers before reruns:
+
+```powershell
+docker compose down --remove-orphans
+```
+
 Milvus:
 
 ```powershell
